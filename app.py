@@ -3,6 +3,7 @@ import pandas as pd
 import joblib
 import os
 
+
 # ============================================================
 # PAGE CONFIGURATION
 # ============================================================
@@ -13,41 +14,41 @@ st.set_page_config(
     layout="wide"
 )
 
-# ============================================================
-# FILE PATHS
-# ============================================================
-
-MODEL_FILE = "personalized_learning_system.pkl"
-
-DATASET_FILE = "Personalized_Learning_Recommendation_Dataset_1000.xlsx"
 
 # ============================================================
-# CHECK MODEL FILE
+# TITLE
 # ============================================================
+
+st.title("🎓 Personalized Learning Recommendation System")
+st.write(
+    "Get a personalized learning path based on your engineering "
+    "branch, career goal, assessment performance, and available time."
+)
+
+st.divider()
+
+
+# ============================================================
+# CHECK MODEL FILES
+# ============================================================
+
+MODEL_FILE = "model.joblib"
+ENCODER_FILE = "encoders.joblib"
 
 if not os.path.exists(MODEL_FILE):
-
     st.error(
-        "❌ Model file not found.\n\n"
-        "Please put 'personalized_learning_system.pkl' "
-        "in the same folder as app.py."
+        "❌ model.joblib is missing. "
+        "Please upload model.joblib to the same folder as app.py."
     )
-
     st.stop()
 
-# ============================================================
-# CHECK DATASET
-# ============================================================
-
-if not os.path.exists(DATASET_FILE):
-
+if not os.path.exists(ENCODER_FILE):
     st.error(
-        "❌ Dataset file not found.\n\n"
-        "Please put 'Personalized_Learning_Recommendation_Dataset_1000.xlsx' "
-        "in the same folder as app.py."
+        "❌ encoders.joblib is missing. "
+        "Please upload encoders.joblib to the same folder as app.py."
     )
-
     st.stop()
+
 
 # ============================================================
 # LOAD MODEL
@@ -55,337 +56,145 @@ if not os.path.exists(DATASET_FILE):
 
 try:
 
-    system = joblib.load(MODEL_FILE)
+    model = joblib.load(MODEL_FILE)
 
-    model = system["model"]
+    encoders = joblib.load(ENCODER_FILE)
 
-    branch_encoder = system["branch_encoder"]
-
-    career_encoder = system["career_encoder"]
-
-    course_encoder = system["course_encoder"]
+    branch_encoder = encoders["branch_encoder"]
+    career_encoder = encoders["career_encoder"]
+    course_encoder = encoders["course_encoder"]
 
 except Exception as e:
 
-    st.error("❌ Error loading the model.")
-
-    st.exception(e)
-
+    st.error("❌ Error loading ML model files.")
+    st.code(str(e))
     st.stop()
+
 
 # ============================================================
 # LOAD DATASET
 # ============================================================
 
+DATASET_FILE = "Personalized_Learning_Recommendation_Dataset_1000.xlsx"
+
+if not os.path.exists(DATASET_FILE):
+
+    st.warning(
+        "⚠️ Dataset file is missing. "
+        "Please upload Personalized_Learning_Recommendation_Dataset_1000.xlsx "
+        "to the same folder as app.py."
+    )
+
+    st.stop()
+
+
 try:
 
-    resources = pd.read_excel(
+    courses = pd.read_excel(
         DATASET_FILE,
         sheet_name="Courses_Resources"
     )
 
 except Exception as e:
 
-    st.error("❌ Error loading Excel dataset.")
-
-    st.exception(e)
-
+    st.error("❌ Could not read Courses_Resources sheet.")
+    st.code(str(e))
     st.stop()
 
-# ============================================================
-# FEATURES
-# ============================================================
-
-features = [
-    "Branch",
-    "Semester",
-    "Career_Goal",
-    "Average_Assessment_Score",
-    "Lowest_Assessment_Score",
-    "Skill_Gap_Count",
-    "Time_Available_Hours"
-]
-
-# ============================================================
-# CUSTOM CSS
-# ============================================================
-
-st.markdown(
-    """
-    <style>
-
-    .main {
-        background-color: #f5f7fb;
-    }
-
-    .title {
-        text-align: center;
-        font-size: 42px;
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-
-    .subtitle {
-        text-align: center;
-        font-size: 18px;
-        color: #666666;
-        margin-bottom: 25px;
-    }
-
-    .recommendation-box {
-        padding: 25px;
-        border-radius: 15px;
-        background-color: #eef6ff;
-        border-left: 6px solid #4a90e2;
-        margin-top: 20px;
-        margin-bottom: 20px;
-    }
-
-    .section-box {
-        padding: 20px;
-        border-radius: 15px;
-        background-color: white;
-        margin-bottom: 20px;
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# ============================================================
-# HEADER
-# ============================================================
-
-st.markdown(
-    '<div class="title">🎓 Personalized Learning Recommendation System</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    '<div class="subtitle">'
-    'AI/ML-Based Personalized Learning Path for Engineering Students'
-    '</div>',
-    unsafe_allow_html=True
-)
-
-st.divider()
 
 # ============================================================
 # SIDEBAR
 # ============================================================
 
-st.sidebar.title("👨‍🎓 Student Details")
+st.sidebar.header("👤 Student Information")
 
-st.sidebar.write(
-    "Enter the student's information below."
-)
+# Branches from encoder
+branches = list(branch_encoder.classes_)
 
-# ============================================================
-# BRANCHES
-# ============================================================
-
-branches = [
-    "CSE",
-    "IT",
-    "ECE",
-    "EEE",
-    "Mechanical",
-    "Civil",
-    "Chemical",
-    "Aerospace",
-    "AI & DS",
-    "Robotics"
-]
-
-# ============================================================
-# CAREER GOALS
-# ============================================================
-
-career_goals = [
-    "Software Developer",
-    "AI/ML Engineer",
-    "Data Scientist",
-    "Data Analyst",
-    "Web Developer",
-    "Cybersecurity Engineer",
-    "Cloud Engineer",
-    "Embedded Engineer",
-    "VLSI Engineer",
-    "Robotics Engineer",
-    "Mechanical Design Engineer",
-    "Civil Engineer",
-    "Structural Engineer",
-    "Chemical Engineer",
-    "Aerospace Engineer"
-]
-
-# ============================================================
-# USER INPUT
-# ============================================================
-
-branch = st.sidebar.selectbox(
-    "🏫 Engineering Branch",
+selected_branch = st.sidebar.selectbox(
+    "Engineering Branch",
     branches
 )
 
-semester = st.sidebar.selectbox(
-    "📚 Semester",
-    [1, 2, 3, 4, 5, 6, 7, 8],
-    index=5
-)
 
-career_goal = st.sidebar.selectbox(
-    "🎯 Career Goal",
+# Career goals from encoder
+career_goals = list(career_encoder.classes_)
+
+selected_career = st.sidebar.selectbox(
+    "Career Goal",
     career_goals
 )
 
+
+semester = st.sidebar.slider(
+    "Semester",
+    min_value=1,
+    max_value=8,
+    value=4
+)
+
+
+time_available = st.sidebar.slider(
+    "Available Learning Hours / Week",
+    min_value=1,
+    max_value=40,
+    value=10
+)
+
+
 average_score = st.sidebar.slider(
-    "📊 Average Assessment Score",
+    "Average Assessment Score",
     min_value=0,
     max_value=100,
     value=65
 )
 
+
 lowest_score = st.sidebar.slider(
-    "📉 Lowest Assessment Score",
+    "Lowest Assessment Score",
     min_value=0,
     max_value=100,
-    value=45
+    value=50
 )
 
-skill_gap_count = st.sidebar.number_input(
-    "🧠 Number of Skill Gaps",
+
+skill_gap_count = st.sidebar.slider(
+    "Number of Skill Gaps",
     min_value=0,
-    max_value=20,
+    max_value=10,
     value=2
 )
 
-time_available = st.sidebar.slider(
-    "⏱️ Learning Hours Per Week",
-    min_value=1,
-    max_value=40,
-    value=8
-)
 
 # ============================================================
-# STUDENT PROFILE
+# RECOMMEND BUTTON
 # ============================================================
 
-st.subheader("👤 Student Profile")
-
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-
-    st.metric(
-        "Branch",
-        branch
-    )
-
-with col2:
-
-    st.metric(
-        "Semester",
-        semester
-    )
-
-with col3:
-
-    st.metric(
-        "Average Score",
-        f"{average_score}%"
-    )
-
-with col4:
-
-    st.metric(
-        "Weekly Hours",
-        f"{time_available} hrs"
-    )
-
-# ============================================================
-# SKILL STATUS
-# ============================================================
-
-st.divider()
-
-st.subheader("🧠 Current Skill Status")
-
-if lowest_score < 40:
-
-    st.error(
-        "🔴 HIGH SKILL GAP — Student needs strong improvement."
-    )
-
-elif lowest_score < 60:
-
-    st.warning(
-        "🟡 MEDIUM SKILL GAP — Additional practice is recommended."
-    )
-
-else:
-
-    st.success(
-        "🟢 LOW SKILL GAP — Student is performing well."
-    )
-
-# ============================================================
-# GENERATE BUTTON
-# ============================================================
-
-st.divider()
-
-generate = st.button(
-    "🚀 Generate My Personalized Learning Path",
+recommend_button = st.sidebar.button(
+    "🚀 Generate Recommendation",
     use_container_width=True
 )
 
+
 # ============================================================
-# GENERATE RECOMMENDATION
+# RECOMMENDATION FUNCTION
 # ============================================================
 
-if generate:
+def get_recommendation():
 
     try:
 
-        # ----------------------------------------------------
-        # ENCODE BRANCH
-        # ----------------------------------------------------
-
-        if branch not in branch_encoder.classes_:
-
-            st.error(
-                f"Branch '{branch}' is not available in the trained model."
-            )
-
-            st.stop()
-
+        # Encode branch
         branch_encoded = branch_encoder.transform(
-            [branch]
+            [selected_branch]
         )[0]
 
-        # ----------------------------------------------------
-        # ENCODE CAREER
-        # ----------------------------------------------------
-
-        if career_goal not in career_encoder.classes_:
-
-            st.error(
-                f"Career goal '{career_goal}' is not available "
-                "in the trained model."
-            )
-
-            st.stop()
-
+        # Encode career goal
         career_encoded = career_encoder.transform(
-            [career_goal]
+            [selected_career]
         )[0]
 
-        # ----------------------------------------------------
-        # CREATE INPUT
-        # ----------------------------------------------------
-
+        # Create input dataframe
         input_data = pd.DataFrame(
             [[
                 branch_encoded,
@@ -396,256 +205,350 @@ if generate:
                 skill_gap_count,
                 time_available
             ]],
-            columns=features
+            columns=[
+                "Branch",
+                "Semester",
+                "Career_Goal",
+                "Average_Assessment_Score",
+                "Lowest_Assessment_Score",
+                "Skill_Gap_Count",
+                "Time_Available_Hours"
+            ]
         )
 
-        # ----------------------------------------------------
-        # ML PREDICTION
-        # ----------------------------------------------------
+        # Predict course
+        prediction = model.predict(input_data)[0]
 
-        prediction = model.predict(
-            input_data
-        )
-
+        # Convert prediction back to course name
         recommended_course = course_encoder.inverse_transform(
-            prediction
+            [prediction]
         )[0]
 
-        # ====================================================
-        # SUCCESS MESSAGE
-        # ====================================================
+        return recommended_course
 
-        st.success(
-            "✅ Personalized learning path generated successfully!"
+    except Exception as e:
+
+        st.error("❌ Recommendation error.")
+        st.code(str(e))
+
+        return None
+
+
+# ============================================================
+# MAIN RESULT
+# ============================================================
+
+if recommend_button:
+
+    recommended_course = get_recommendation()
+
+    if recommended_course:
+
+        st.success("✅ Personalized recommendation generated!")
+
+        st.divider()
+
+        # ----------------------------------------------------
+        # STUDENT PROFILE
+        # ----------------------------------------------------
+
+        st.subheader("👤 Student Profile")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric(
+                "Branch",
+                selected_branch
+            )
+
+        with col2:
+            st.metric(
+                "Semester",
+                semester
+            )
+
+        with col3:
+            st.metric(
+                "Career Goal",
+                selected_career
+            )
+
+        with col4:
+            st.metric(
+                "Weekly Hours",
+                f"{time_available} hrs"
+            )
+
+
+        st.divider()
+
+
+        # ----------------------------------------------------
+        # PERFORMANCE
+        # ----------------------------------------------------
+
+        st.subheader("📊 Learning Performance")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+
+            st.metric(
+                "Average Score",
+                f"{average_score}%"
+            )
+
+        with col2:
+
+            st.metric(
+                "Lowest Score",
+                f"{lowest_score}%"
+            )
+
+        with col3:
+
+            st.metric(
+                "Skill Gaps",
+                skill_gap_count
+            )
+
+
+        st.divider()
+
+
+        # ----------------------------------------------------
+        # RECOMMENDED COURSE
+        # ----------------------------------------------------
+
+        st.subheader("🎯 Recommended Learning Path")
+
+        st.info(
+            f"### 📚 Recommended Course\n"
+            f"**{recommended_course}**"
         )
 
-        # ====================================================
-        # MAIN RECOMMENDATION
-        # ====================================================
 
-        st.markdown(
-            f"""
-            <div class="recommendation-box">
+        # ----------------------------------------------------
+        # FIND COURSE INFORMATION
+        # ----------------------------------------------------
 
-            <h2>🎯 Your Recommended Next Course</h2>
-
-            <h1>{recommended_course}</h1>
-
-            <p>
-            This recommendation is generated using machine
-            learning based on your branch, semester, career goal,
-            assessment performance, skill gaps and available
-            learning time.
-            </p>
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        # ====================================================
-        # COURSE DETAILS
-        # ====================================================
-
-        course_info = resources[
-            resources["Course"].astype(str).str.strip()
-            == str(recommended_course).strip()
+        course_info = courses[
+            courses["Course"].astype(str).str.strip()
+            ==
+            str(recommended_course).strip()
         ]
+
 
         if not course_info.empty:
 
-            row = course_info.iloc[0]
-
-            st.divider()
-
-            st.subheader("📚 Recommended Learning Resources")
+            course_row = course_info.iloc[0]
 
             col1, col2 = st.columns(2)
 
-            # ------------------------------------------------
-            # LEFT COLUMN
-            # ------------------------------------------------
-
             with col1:
 
-                st.markdown("### 📝 Practice Plan")
+                st.markdown("### 📖 Course Details")
 
-                practice = row.get(
-                    "Practice_Plan",
-                    "Practice the recommended concepts regularly."
-                )
+                if "Difficulty" in course_row:
 
-                st.info(
-                    str(practice)
-                )
+                    st.write(
+                        f"**Difficulty:** "
+                        f"{course_row['Difficulty']}"
+                    )
 
-                st.markdown("### 💻 Recommended Project")
+                if "Practice_Plan" in course_row:
 
-                project = row.get(
-                    "Project",
-                    "Build a practical project related to this course."
-                )
+                    st.write(
+                        f"**Practice Plan:** "
+                        f"{course_row['Practice_Plan']}"
+                    )
 
-                st.info(
-                    str(project)
-                )
-
-            # ------------------------------------------------
-            # RIGHT COLUMN
-            # ------------------------------------------------
 
             with col2:
 
-                st.markdown("### 🏆 Recommended Certification")
+                st.markdown("### 💡 Project & Certification")
 
-                certification = row.get(
-                    "Certification",
-                    "Complete a relevant certification."
-                )
+                if "Project" in course_row:
 
-                st.info(
-                    str(certification)
-                )
+                    st.write(
+                        f"**Project:** "
+                        f"{course_row['Project']}"
+                    )
 
-                st.markdown("### 📈 Difficulty Level")
+                if "Certification" in course_row:
 
-                difficulty = row.get(
-                    "Difficulty",
-                    "Intermediate"
-                )
+                    st.write(
+                        f"**Certification:** "
+                        f"{course_row['Certification']}"
+                    )
 
-                st.info(
-                    str(difficulty)
-                )
 
         else:
 
             st.warning(
-                "Course was predicted, but detailed resource "
-                "information was not found in the dataset."
+                "Course information was not found in "
+                "Courses_Resources sheet."
             )
 
-        # ====================================================
-        # WEEKLY LEARNING PLAN
-        # ====================================================
 
         st.divider()
 
-        st.subheader("📅 Personalized Weekly Learning Plan")
 
-        theory_hours = round(
-            time_available * 0.30,
-            1
-        )
+        # ----------------------------------------------------
+        # WEEKLY PLAN
+        # ----------------------------------------------------
 
-        practice_hours = round(
-            time_available * 0.30,
-            1
-        )
+        st.subheader("📅 Personalized Weekly Study Plan")
 
-        project_hours = round(
-            time_available * 0.25,
-            1
-        )
+        weekly_plan = {
+            "Activity": [
+                "📚 Theory / Course Learning",
+                "💻 Practice",
+                "🛠️ Project Work",
+                "🔄 Revision"
+            ],
+            "Percentage": [
+                "30%",
+                "30%",
+                "25%",
+                "15%"
+            ],
+            "Recommended Hours": [
+                round(time_available * 0.30, 1),
+                round(time_available * 0.30, 1),
+                round(time_available * 0.25, 1),
+                round(time_available * 0.15, 1)
+            ]
+        }
 
-        revision_hours = round(
-            time_available * 0.15,
-            1
-        )
+        plan_df = pd.DataFrame(weekly_plan)
 
-        weekly_plan = pd.DataFrame(
-            {
-                "Learning Activity": [
-                    "📖 Theory / Concepts",
-                    "✍️ Practice",
-                    "💻 Project Work",
-                    "🔄 Revision"
-                ],
+        st.table(plan_df)
 
-                "Hours": [
-                    theory_hours,
-                    practice_hours,
-                    project_hours,
-                    revision_hours
-                ]
-            }
-        )
-
-        st.dataframe(
-            weekly_plan,
-            use_container_width=True,
-            hide_index=True
-        )
-
-        # ====================================================
-        # PERFORMANCE
-        # ====================================================
 
         st.divider()
 
-        st.subheader("📊 Current Performance")
 
-        st.write(
-            f"Average Assessment Score: **{average_score}%**"
-        )
+        # ----------------------------------------------------
+        # SKILL GAP ANALYSIS
+        # ----------------------------------------------------
 
-        st.progress(
-            average_score / 100
-        )
+        st.subheader("🔍 Skill Gap Analysis")
 
-        st.write(
-            f"Lowest Assessment Score: **{lowest_score}%**"
-        )
+        if lowest_score < 40:
 
-        st.write(
-            f"Identified Skill Gaps: **{skill_gap_count}**"
-        )
+            level = "Beginner"
+            message = (
+                "You have a significant skill gap. "
+                "Start with basic concepts and guided practice."
+            )
 
-        # ====================================================
-        # PERSONALIZED SUMMARY
-        # ====================================================
+        elif lowest_score < 60:
+
+            level = "Basic / Developing"
+            message = (
+                "You have some knowledge but need more practice "
+                "and concept strengthening."
+            )
+
+        elif lowest_score < 75:
+
+            level = "Intermediate"
+            message = (
+                "Your fundamentals are developing well. "
+                "Focus on projects and advanced practice."
+            )
+
+        else:
+
+            level = "Advanced"
+            message = (
+                "Your performance is strong. "
+                "Focus on advanced projects and certifications."
+            )
+
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.metric(
+                "Current Learning Level",
+                level
+            )
+
+        with col2:
+
+            st.metric(
+                "Priority",
+                "High" if lowest_score < 60 else "Medium"
+            )
+
+        st.write(message)
+
 
         st.divider()
 
-        st.subheader("🎓 Personalized Learning Summary")
+
+        # ----------------------------------------------------
+        # CAREER PATH
+        # ----------------------------------------------------
+
+        st.subheader("🚀 Suggested Career Development")
 
         st.write(
+            f"Based on your **{selected_branch}** branch and "
+            f"career goal **{selected_career}**, focus on:"
+        )
+
+        st.markdown(
             f"""
-            **Branch:** {branch}
-
-            **Semester:** {semester}
-
-            **Career Goal:** {career_goal}
-
-            **Average Performance:** {average_score}%
-
-            **Lowest Performance:** {lowest_score}%
-
-            **Skill Gaps:** {skill_gap_count}
-
-            **Available Time:** {time_available} hours/week
-
-            **Next Course:** {recommended_course}
+            - 📚 Complete **{recommended_course}**
+            - 💻 Practice regularly
+            - 🛠️ Build at least one project
+            - 🏆 Work toward a relevant certification
+            - 📊 Improve your weak assessment areas
+            - ⏰ Follow your {time_available}-hour weekly schedule
             """
         )
 
-        # ====================================================
-        # FINAL MESSAGE
-        # ====================================================
 
-        st.success(
-            f"🚀 Start learning **{recommended_course}** "
-            "and follow your personalized weekly plan."
-        )
+else:
 
-    except Exception as e:
+    # ========================================================
+    # WELCOME SCREEN
+    # ========================================================
 
-        st.error(
-            "❌ Something went wrong while generating "
-            "the recommendation."
-        )
+    st.subheader("👋 Welcome!")
 
-        st.exception(e)
+    st.write(
+        "Enter your learning information using the sidebar "
+        "and click **Generate Recommendation**."
+    )
+
+    st.markdown(
+        """
+        ### The system considers:
+
+        🏫 **Engineering Branch**  
+        🎯 **Career Goal**  
+        📚 **Semester**  
+        📊 **Assessment Performance**  
+        🔍 **Skill Gaps**  
+        ⏰ **Available Learning Time**
+
+        ### The system provides:
+
+        ✅ Recommended Course  
+        ✅ Practice Plan  
+        ✅ Project Recommendation  
+        ✅ Certification Recommendation  
+        ✅ Weekly Learning Plan  
+        ✅ Skill Gap Analysis
+        """
+    )
+
 
 # ============================================================
 # FOOTER
@@ -655,5 +558,5 @@ st.divider()
 
 st.caption(
     "Personalized Learning Recommendation System | "
-    "Machine Learning Project | MCA"
+    "Machine Learning Based Academic Project"
 )
