@@ -3,7 +3,6 @@ import pandas as pd
 import joblib
 import os
 
-
 # ============================================================
 # PAGE CONFIG
 # ============================================================
@@ -14,9 +13,41 @@ st.set_page_config(
     layout="wide"
 )
 
+# ============================================================
+# FILE NAMES
+# ============================================================
+
+MODEL_FILE = "model.joblib"
+ENCODER_FILE = "encoders.joblib"
+DATASET_FILE = "Personalized_Learning_Recommendation_Dataset_1000.xlsx"
 
 # ============================================================
-# TITLE
+# SESSION STATE
+# ============================================================
+
+if "stage" not in st.session_state:
+    st.session_state.stage = "quiz"
+
+if "quiz_submitted" not in st.session_state:
+    st.session_state.quiz_submitted = False
+
+if "quiz_score" not in st.session_state:
+    st.session_state.quiz_score = 0
+
+if "quiz_percentage" not in st.session_state:
+    st.session_state.quiz_percentage = 0
+
+if "quiz_level" not in st.session_state:
+    st.session_state.quiz_level = ""
+
+if "selected_topic" not in st.session_state:
+    st.session_state.selected_topic = ""
+
+if "recommended_course" not in st.session_state:
+    st.session_state.recommended_course = None
+
+# ============================================================
+# HEADER
 # ============================================================
 
 st.title("🎓 Personalized Learning Recommendation System")
@@ -29,50 +60,31 @@ st.write(
 
 st.divider()
 
-
 # ============================================================
-# FILE NAMES
-# ============================================================
-
-MODEL_FILE = "model.joblib"
-ENCODER_FILE = "encoders.joblib"
-DATASET_FILE = "Personalized_Learning_Recommendation_Dataset_1000.xlsx"
-
-
-# ============================================================
-# CHECK FILES
+# CHECK REQUIRED FILES
 # ============================================================
 
 if not os.path.exists(MODEL_FILE):
-
     st.error(
         "❌ model.joblib not found. "
         "Upload model.joblib in the same folder as app.py."
     )
-
     st.stop()
 
-
 if not os.path.exists(ENCODER_FILE):
-
     st.error(
         "❌ encoders.joblib not found. "
         "Upload encoders.joblib in the same folder as app.py."
     )
-
     st.stop()
 
-
 if not os.path.exists(DATASET_FILE):
-
     st.error(
         "❌ Dataset not found. "
         "Upload Personalized_Learning_Recommendation_Dataset_1000.xlsx "
         "in the same folder as app.py."
     )
-
     st.stop()
-
 
 # ============================================================
 # LOAD MODEL
@@ -91,11 +103,8 @@ try:
 except Exception as e:
 
     st.error("❌ Error loading ML model.")
-
     st.code(str(e))
-
     st.stop()
-
 
 # ============================================================
 # LOAD EXCEL DATA
@@ -111,362 +120,8 @@ try:
 except Exception as e:
 
     st.error("❌ Error reading Excel dataset.")
-
     st.code(str(e))
-
     st.stop()
-
-
-# ============================================================
-# SESSION STATE
-# ============================================================
-
-if "quiz_submitted" not in st.session_state:
-
-    st.session_state.quiz_submitted = False
-
-
-if "quiz_score" not in st.session_state:
-
-    st.session_state.quiz_score = 0
-
-
-if "quiz_level" not in st.session_state:
-
-    st.session_state.quiz_level = ""
-
-
-# ============================================================
-# SIDEBAR - STUDENT INFORMATION
-# ============================================================
-
-st.sidebar.header("👤 Student Information")
-
-
-branches = list(branch_encoder.classes_)
-
-selected_branch = st.sidebar.selectbox(
-    "Engineering Branch",
-    branches
-)
-
-
-career_goals = list(career_encoder.classes_)
-
-selected_career = st.sidebar.selectbox(
-    "Career Goal",
-    career_goals
-)
-
-
-semester = st.sidebar.slider(
-    "Semester",
-    1,
-    8,
-    4
-)
-
-
-time_available = st.sidebar.slider(
-    "Available Learning Hours / Week",
-    1,
-    40,
-    10
-)
-
-
-average_score = st.sidebar.slider(
-    "Average Assessment Score",
-    0,
-    100,
-    65
-)
-
-
-lowest_score = st.sidebar.slider(
-    "Lowest Assessment Score",
-    0,
-    100,
-    50
-)
-
-
-skill_gap_count = st.sidebar.slider(
-    "Number of Skill Gaps",
-    0,
-    10,
-    2
-)
-
-
-# ============================================================
-# ML RECOMMENDATION FUNCTION
-# ============================================================
-
-def generate_ml_recommendation():
-
-    try:
-
-        branch_encoded = branch_encoder.transform(
-            [selected_branch]
-        )[0]
-
-        career_encoded = career_encoder.transform(
-            [selected_career]
-        )[0]
-
-        input_data = pd.DataFrame(
-            [[
-                branch_encoded,
-                semester,
-                career_encoded,
-                average_score,
-                lowest_score,
-                skill_gap_count,
-                time_available
-            ]],
-            columns=[
-                "Branch",
-                "Semester",
-                "Career_Goal",
-                "Average_Assessment_Score",
-                "Lowest_Assessment_Score",
-                "Skill_Gap_Count",
-                "Time_Available_Hours"
-            ]
-        )
-
-        prediction = model.predict(input_data)[0]
-
-        recommended_course = course_encoder.inverse_transform(
-            [prediction]
-        )[0]
-
-        return recommended_course
-
-    except Exception as e:
-
-        st.error("Recommendation error.")
-
-        st.code(str(e))
-
-        return None
-
-
-# ============================================================
-# SIDEBAR BUTTON
-# ============================================================
-
-if st.sidebar.button(
-    "🚀 Generate Recommendation",
-    use_container_width=True
-):
-
-    st.session_state.recommended_course = (
-        generate_ml_recommendation()
-    )
-
-
-# ============================================================
-# MAIN TABS
-# ============================================================
-
-tab1, tab2, tab3 = st.tabs(
-    [
-        "🎯 Recommendation",
-        "📝 Skill Quiz",
-        "📊 Learning Analysis"
-    ]
-)
-
-
-# ============================================================
-# TAB 1 - RECOMMENDATION
-# ============================================================
-
-with tab1:
-
-    st.header("🎯 Personalized Learning Recommendation")
-
-
-    if (
-        "recommended_course"
-        not in st.session_state
-        or st.session_state.recommended_course is None
-    ):
-
-        st.info(
-            "👈 Enter your details in the sidebar "
-            "and click 'Generate Recommendation'."
-        )
-
-    else:
-
-        recommended_course = (
-            st.session_state.recommended_course
-        )
-
-
-        # ----------------------------------------------------
-        # STUDENT PROFILE
-        # ----------------------------------------------------
-
-        st.subheader("👤 Student Profile")
-
-
-        col1, col2, col3, col4 = st.columns(4)
-
-
-        with col1:
-
-            st.metric(
-                "Branch",
-                selected_branch
-            )
-
-
-        with col2:
-
-            st.metric(
-                "Semester",
-                semester
-            )
-
-
-        with col3:
-
-            st.metric(
-                "Career Goal",
-                selected_career
-            )
-
-
-        with col4:
-
-            st.metric(
-                "Weekly Hours",
-                f"{time_available} hrs"
-            )
-
-
-        st.divider()
-
-
-        # ----------------------------------------------------
-        # PERFORMANCE
-        # ----------------------------------------------------
-
-        st.subheader("📈 Academic Performance")
-
-
-        col1, col2, col3 = st.columns(3)
-
-
-        with col1:
-
-            st.metric(
-                "Average Score",
-                f"{average_score}%"
-            )
-
-
-        with col2:
-
-            st.metric(
-                "Lowest Score",
-                f"{lowest_score}%"
-            )
-
-
-        with col3:
-
-            st.metric(
-                "Skill Gaps",
-                skill_gap_count
-            )
-
-
-        st.divider()
-
-
-        # ----------------------------------------------------
-        # COURSE
-        # ----------------------------------------------------
-
-        st.subheader("📚 Recommended Course")
-
-
-        st.success(
-            f"### {recommended_course}"
-        )
-
-
-        # ----------------------------------------------------
-        # COURSE DETAILS
-        # ----------------------------------------------------
-
-        course_info = courses[
-            courses["Course"].astype(str).str.strip()
-            ==
-            str(recommended_course).strip()
-        ]
-
-
-        if not course_info.empty:
-
-            row = course_info.iloc[0]
-
-
-            col1, col2 = st.columns(2)
-
-
-            with col1:
-
-                st.subheader("💻 Practice Plan")
-
-                if "Practice_Plan" in courses.columns:
-
-                    st.write(
-                        row["Practice_Plan"]
-                    )
-
-
-                st.subheader("🛠️ Project")
-
-                if "Project" in courses.columns:
-
-                    st.write(
-                        row["Project"]
-                    )
-
-
-            with col2:
-
-                st.subheader("🏆 Certification")
-
-                if "Certification" in courses.columns:
-
-                    st.write(
-                        row["Certification"]
-                    )
-
-
-                st.subheader("📊 Difficulty")
-
-                if "Difficulty" in courses.columns:
-
-                    st.write(
-                        row["Difficulty"]
-                    )
-
-
-        else:
-
-            st.warning(
-                "Course details were not found "
-                "in Courses_Resources."
-            )
-
 
 # ============================================================
 # QUIZ QUESTIONS
@@ -479,10 +134,8 @@ quiz_questions = {
         {
             "question":
             "Which keyword is used to define a function in Python?",
-
             "options":
             ["function", "def", "define", "fun"],
-
             "answer":
             "def"
         },
@@ -490,10 +143,8 @@ quiz_questions = {
         {
             "question":
             "Which data type is immutable in Python?",
-
             "options":
             ["List", "Dictionary", "Tuple", "Set"],
-
             "answer":
             "Tuple"
         },
@@ -501,10 +152,8 @@ quiz_questions = {
         {
             "question":
             "Which symbol is used for comments in Python?",
-
             "options":
             ["//", "#", "/*", "--"],
-
             "answer":
             "#"
         },
@@ -512,10 +161,8 @@ quiz_questions = {
         {
             "question":
             "Which function is used to display output in Python?",
-
             "options":
             ["display()", "show()", "print()", "output()"],
-
             "answer":
             "print()"
         },
@@ -523,26 +170,21 @@ quiz_questions = {
         {
             "question":
             "Which collection stores key-value pairs?",
-
             "options":
             ["List", "Tuple", "Dictionary", "Set"],
-
             "answer":
             "Dictionary"
         }
 
     ],
 
-
     "Java": [
 
         {
             "question":
             "Which keyword is used for inheritance in Java?",
-
             "options":
             ["inherit", "extends", "implements", "inherits"],
-
             "answer":
             "extends"
         },
@@ -550,10 +192,8 @@ quiz_questions = {
         {
             "question":
             "Which method is the entry point of a Java program?",
-
             "options":
             ["start()", "run()", "main()", "execute()"],
-
             "answer":
             "main()"
         },
@@ -561,10 +201,8 @@ quiz_questions = {
         {
             "question":
             "Which keyword creates an object in Java?",
-
             "options":
             ["create", "object", "new", "make"],
-
             "answer":
             "new"
         },
@@ -572,10 +210,13 @@ quiz_questions = {
         {
             "question":
             "Java is primarily a ______ language.",
-
             "options":
-            ["Object-oriented", "Markup", "Query", "Assembly"],
-
+            [
+                "Object-oriented",
+                "Markup",
+                "Query",
+                "Assembly"
+            ],
             "answer":
             "Object-oriented"
         },
@@ -583,26 +224,21 @@ quiz_questions = {
         {
             "question":
             "Which symbol is used to end a statement in Java?",
-
             "options":
             [".", ",", ";", ":"],
-
             "answer":
             ";"
         }
 
     ],
 
-
     "C++": [
 
         {
             "question":
             "Which symbol is used to end a statement in C++?",
-
             "options":
             [".", ",", ";", ":"],
-
             "answer":
             ";"
         },
@@ -610,10 +246,13 @@ quiz_questions = {
         {
             "question":
             "Which feature allows the same function name with different parameters?",
-
             "options":
-            ["Inheritance", "Overloading", "Encapsulation", "Abstraction"],
-
+            [
+                "Inheritance",
+                "Overloading",
+                "Encapsulation",
+                "Abstraction"
+            ],
             "answer":
             "Overloading"
         },
@@ -621,10 +260,8 @@ quiz_questions = {
         {
             "question":
             "Which operator is used to access a member through a pointer?",
-
             "options":
             [".", "::", "->", "&"],
-
             "answer":
             "->"
         },
@@ -632,10 +269,8 @@ quiz_questions = {
         {
             "question":
             "Which header is commonly used for input and output in C++?",
-
             "options":
             ["stdio.h", "iostream", "string.h", "math.h"],
-
             "answer":
             "iostream"
         },
@@ -643,7 +278,6 @@ quiz_questions = {
         {
             "question":
             "C++ supports which programming paradigm?",
-
             "options":
             [
                 "Object-oriented",
@@ -651,23 +285,19 @@ quiz_questions = {
                 "Only functional",
                 "Only declarative"
             ],
-
             "answer":
             "Object-oriented"
         }
 
     ],
 
-
     "SQL": [
 
         {
             "question":
             "Which SQL command is used to retrieve data?",
-
             "options":
             ["GET", "SELECT", "FETCH", "READ"],
-
             "answer":
             "SELECT"
         },
@@ -675,10 +305,8 @@ quiz_questions = {
         {
             "question":
             "Which command is used to remove a table?",
-
             "options":
             ["DELETE", "REMOVE", "DROP", "CLEAR"],
-
             "answer":
             "DROP"
         },
@@ -686,10 +314,8 @@ quiz_questions = {
         {
             "question":
             "Which clause filters rows in SQL?",
-
             "options":
             ["WHERE", "FILTER", "CHECK", "SELECT"],
-
             "answer":
             "WHERE"
         },
@@ -697,10 +323,13 @@ quiz_questions = {
         {
             "question":
             "Which key uniquely identifies a row?",
-
             "options":
-            ["Foreign Key", "Primary Key", "Candidate Key", "Secondary Key"],
-
+            [
+                "Foreign Key",
+                "Primary Key",
+                "Candidate Key",
+                "Secondary Key"
+            ],
             "answer":
             "Primary Key"
         },
@@ -708,23 +337,19 @@ quiz_questions = {
         {
             "question":
             "Which command adds a new row to a table?",
-
             "options":
             ["ADD", "INSERT", "UPDATE", "CREATE"],
-
             "answer":
             "INSERT"
         }
 
     ],
 
-
     "HTML": [
 
         {
             "question":
             "HTML is mainly used to create what?",
-
             "options":
             [
                 "Web page structure",
@@ -732,7 +357,6 @@ quiz_questions = {
                 "Operating system",
                 "Network"
             ],
-
             "answer":
             "Web page structure"
         },
@@ -740,10 +364,8 @@ quiz_questions = {
         {
             "question":
             "Which tag creates a hyperlink?",
-
             "options":
             ["<link>", "<a>", "<href>", "<url>"],
-
             "answer":
             "<a>"
         },
@@ -751,10 +373,8 @@ quiz_questions = {
         {
             "question":
             "Which tag creates the largest heading?",
-
             "options":
             ["<h6>", "<head>", "<h1>", "<heading>"],
-
             "answer":
             "<h1>"
         },
@@ -762,10 +382,8 @@ quiz_questions = {
         {
             "question":
             "Which tag is used to insert an image?",
-
             "options":
             ["<image>", "<img>", "<picture>", "<src>"],
-
             "answer":
             "<img>"
         },
@@ -773,26 +391,21 @@ quiz_questions = {
         {
             "question":
             "Which attribute specifies an image path?",
-
             "options":
             ["href", "src", "link", "path"],
-
             "answer":
             "src"
         }
 
     ],
 
-
     "Data Structures": [
 
         {
             "question":
             "Which data structure follows LIFO?",
-
             "options":
             ["Queue", "Stack", "Array", "Graph"],
-
             "answer":
             "Stack"
         },
@@ -800,10 +413,8 @@ quiz_questions = {
         {
             "question":
             "Which data structure follows FIFO?",
-
             "options":
             ["Stack", "Queue", "Tree", "Graph"],
-
             "answer":
             "Queue"
         },
@@ -811,10 +422,8 @@ quiz_questions = {
         {
             "question":
             "Which structure consists of nodes connected by edges?",
-
             "options":
             ["Array", "Graph", "Stack", "Queue"],
-
             "answer":
             "Graph"
         },
@@ -822,10 +431,8 @@ quiz_questions = {
         {
             "question":
             "Which data structure represents hierarchical relationships?",
-
             "options":
             ["Tree", "Queue", "Array", "Stack"],
-
             "answer":
             "Tree"
         },
@@ -833,7 +440,6 @@ quiz_questions = {
         {
             "question":
             "Binary search is normally applied to what kind of array?",
-
             "options":
             [
                 "Unsorted array",
@@ -841,7 +447,6 @@ quiz_questions = {
                 "Empty array only",
                 "Random array"
             ],
-
             "answer":
             "Sorted array"
         }
@@ -850,59 +455,70 @@ quiz_questions = {
 
 }
 
+# ============================================================
+# FUNCTION - RESET APPLICATION
+# ============================================================
+
+def reset_application():
+
+    st.session_state.stage = "quiz"
+
+    st.session_state.quiz_submitted = False
+
+    st.session_state.quiz_score = 0
+
+    st.session_state.quiz_percentage = 0
+
+    st.session_state.quiz_level = ""
+
+    st.session_state.selected_topic = ""
+
+    st.session_state.recommended_course = None
+
 
 # ============================================================
-# TAB 2 - QUIZ
+# STAGE 1 - QUICK QUIZ
 # ============================================================
 
-with tab2:
+if st.session_state.stage == "quiz":
 
-    st.header("📝 Skill Assessment Quiz")
+    st.header("📝 Step 1: Quick Skill Assessment")
 
     st.write(
-        "Take a short quiz to understand your current "
-        "knowledge level."
+        "Before generating your learning path, "
+        "let us understand your current skill level."
     )
 
-
-    # --------------------------------------------------------
-    # TOPIC
-    # --------------------------------------------------------
+    st.info(
+        "💡 Select a topic and answer 5 questions."
+    )
 
     available_topics = list(quiz_questions.keys())
 
-
     selected_topic = st.selectbox(
-        "Select Quiz Topic",
+        "Choose your skill/topic",
         available_topics
     )
 
-
-    st.info(
-        f"📚 You selected: **{selected_topic}**"
-    )
-
+    st.session_state.selected_topic = selected_topic
 
     questions = quiz_questions[selected_topic]
 
-
     st.divider()
 
-
-    # --------------------------------------------------------
-    # QUESTIONS
-    # --------------------------------------------------------
+    st.subheader(
+        f"📚 {selected_topic} Skill Quiz"
+    )
 
     for i, question in enumerate(questions):
 
-        st.subheader(
-            f"Question {i + 1}"
+        st.write(
+            f"### Question {i + 1}"
         )
 
         st.write(
             question["question"]
         )
-
 
         st.radio(
             "Choose your answer:",
@@ -910,13 +526,7 @@ with tab2:
             key=f"quiz_{selected_topic}_{i}"
         )
 
-
     st.divider()
-
-
-    # --------------------------------------------------------
-    # SUBMIT
-    # --------------------------------------------------------
 
     if st.button(
         "✅ Submit Quiz",
@@ -925,27 +535,18 @@ with tab2:
 
         score = 0
 
-
         for i, question in enumerate(questions):
 
-            selected_answer = st.session_state[
+            selected_answer = st.session_state.get(
                 f"quiz_{selected_topic}_{i}"
-            ]
-
+            )
 
             if selected_answer == question["answer"]:
-
                 score += 1
-
 
         percentage = (
             score / len(questions)
         ) * 100
-
-
-        # ----------------------------------------------------
-        # LEVEL
-        # ----------------------------------------------------
 
         if percentage < 40:
 
@@ -959,271 +560,772 @@ with tab2:
 
             level = "Advanced"
 
-
         st.session_state.quiz_submitted = True
 
         st.session_state.quiz_score = score
 
+        st.session_state.quiz_percentage = percentage
+
         st.session_state.quiz_level = level
 
+        st.rerun()
 
-        # ----------------------------------------------------
-        # RESULT
-        # ----------------------------------------------------
 
-        st.success(
-            "🎉 Quiz submitted successfully!"
+# ============================================================
+# STAGE 2 - QUIZ RESULT
+# ============================================================
+
+elif st.session_state.stage == "quiz_result":
+
+    st.header("🎯 Step 2: Your Skill Assessment Result")
+
+    score = st.session_state.quiz_score
+
+    percentage = st.session_state.quiz_percentage
+
+    level = st.session_state.quiz_level
+
+    topic = st.session_state.selected_topic
+
+    st.success(
+        "🎉 Quiz completed successfully!"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Quiz Score",
+            f"{score}/5"
         )
 
+    with col2:
 
-        col1, col2, col3 = st.columns(3)
+        st.metric(
+            "Percentage",
+            f"{percentage:.0f}%"
+        )
 
+    with col3:
 
-        with col1:
+        st.metric(
+            "Learning Level",
+            level
+        )
 
-            st.metric(
-                "Score",
-                f"{score}/{len(questions)}"
-            )
+    st.divider()
 
+    st.subheader(
+        f"📚 Topic: {topic}"
+    )
 
-        with col2:
+    if level == "Beginner":
 
-            st.metric(
-                "Percentage",
-                f"{percentage:.0f}%"
-            )
+        st.warning(
+            "📖 You are currently at Beginner level. "
+            "Your learning path will focus on fundamentals."
+        )
 
-
-        with col3:
-
-            st.metric(
-                "Learning Level",
-                level
-            )
-
-
-        # ----------------------------------------------------
-        # FEEDBACK
-        # ----------------------------------------------------
-
-        if level == "Beginner":
-
-            st.warning(
-                "📖 You should strengthen your basic concepts "
-                "before moving to advanced topics."
-            )
-
-
-        elif level == "Intermediate":
-
-            st.info(
-                "💻 Your fundamentals are developing well. "
-                "Focus on practice and projects."
-            )
-
-
-        else:
-
-            st.success(
-                "🚀 Excellent! You can move toward advanced "
-                "topics and real-world projects."
-            )
-
-
-        st.divider()
-
-
-        # ----------------------------------------------------
-        # ANSWER REVIEW
-        # ----------------------------------------------------
-
-        st.subheader("📋 Answer Review")
-
-
-        for i, question in enumerate(questions):
-
-            selected_answer = st.session_state[
-                f"quiz_{selected_topic}_{i}"
-            ]
-
-
-            if selected_answer == question["answer"]:
-
-                st.success(
-                    f"Q{i+1}: Correct ✅"
-                )
-
-            else:
-
-                st.error(
-                    f"Q{i+1}: Incorrect ❌"
-                )
-
-                st.write(
-                    f"Correct answer: "
-                    f"**{question['answer']}**"
-                )
-
-
-# ============================================================
-# TAB 3 - LEARNING ANALYSIS
-# ============================================================
-
-with tab3:
-
-    st.header("📊 Learning Analysis")
-
-
-    if not st.session_state.quiz_submitted:
+    elif level == "Intermediate":
 
         st.info(
-            "Complete the quiz first to see your learning analysis."
+            "💻 You are at Intermediate level. "
+            "Your learning path should combine concepts, practice and projects."
         )
 
     else:
 
-        score = st.session_state.quiz_score
+        st.success(
+            "🚀 You are at Advanced level. "
+            "Your learning path can focus on advanced concepts and industry projects."
+        )
 
-        level = st.session_state.quiz_level
+    st.divider()
+
+    st.subheader("📋 Answer Review")
+
+    questions = quiz_questions[topic]
+
+    for i, question in enumerate(questions):
+
+        selected_answer = st.session_state.get(
+            f"quiz_{topic}_{i}"
+        )
+
+        if selected_answer == question["answer"]:
+
+            st.success(
+                f"Q{i + 1}: Correct ✅"
+            )
+
+        else:
+
+            st.error(
+                f"Q{i + 1}: Incorrect ❌"
+            )
+
+            st.write(
+                f"Correct answer: **{question['answer']}**"
+            )
+
+    st.divider()
+
+    if st.button(
+        "➡️ Continue to Student Details",
+        use_container_width=True
+    ):
+
+        st.session_state.stage = "profile"
+
+        st.rerun()
 
 
-        st.subheader("🎯 Your Learning Profile")
+# ============================================================
+# STAGE 3 - STUDENT DETAILS
+# ============================================================
+
+elif st.session_state.stage == "profile":
+
+    st.header("👤 Step 3: Student Information")
+
+    st.write(
+        "Now provide your academic and learning information "
+        "so the ML model can generate a personalized recommendation."
+    )
+
+    # --------------------------------------------------------
+    # QUIZ SUMMARY
+    # --------------------------------------------------------
+
+    st.subheader("📝 Quiz Summary")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Quiz Topic",
+            st.session_state.selected_topic
+        )
+
+    with col2:
+
+        st.metric(
+            "Quiz Score",
+            f"{st.session_state.quiz_score}/5"
+        )
+
+    with col3:
+
+        st.metric(
+            "Learning Level",
+            st.session_state.quiz_level
+        )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # STUDENT INPUT
+    # --------------------------------------------------------
+
+    branches = list(
+        branch_encoder.classes_
+    )
+
+    career_goals = list(
+        career_encoder.classes_
+    )
+
+    selected_branch = st.selectbox(
+        "🎓 Engineering Branch",
+        branches
+    )
+
+    selected_career = st.selectbox(
+        "💼 Career Goal",
+        career_goals
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        semester = st.slider(
+            "📚 Semester",
+            1,
+            8,
+            4
+        )
+
+    with col2:
+
+        time_available = st.slider(
+            "⏰ Available Learning Hours / Week",
+            1,
+            40,
+            10
+        )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        average_score = st.slider(
+            "📊 Average Assessment Score",
+            0,
+            100,
+            65
+        )
+
+    with col2:
+
+        lowest_score = st.slider(
+            "📉 Lowest Assessment Score",
+            0,
+            100,
+            50
+        )
+
+    skill_gap_count = st.slider(
+        "⚠️ Number of Skill Gaps",
+        0,
+        10,
+        2
+    )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # GENERATE RECOMMENDATION
+    # --------------------------------------------------------
+
+    if st.button(
+        "🚀 Generate Personalized Recommendation",
+        use_container_width=True
+    ):
+
+        try:
+
+            branch_encoded = branch_encoder.transform(
+                [selected_branch]
+            )[0]
+
+            career_encoded = career_encoder.transform(
+                [selected_career]
+            )[0]
+
+            input_data = pd.DataFrame(
+                [[
+                    branch_encoded,
+                    semester,
+                    career_encoded,
+                    average_score,
+                    lowest_score,
+                    skill_gap_count,
+                    time_available
+                ]],
+                columns=[
+                    "Branch",
+                    "Semester",
+                    "Career_Goal",
+                    "Average_Assessment_Score",
+                    "Lowest_Assessment_Score",
+                    "Skill_Gap_Count",
+                    "Time_Available_Hours"
+                ]
+            )
+
+            prediction = model.predict(
+                input_data
+            )[0]
+
+            recommended_course = (
+                course_encoder.inverse_transform(
+                    [prediction]
+                )[0]
+            )
+
+            # Save student information
+
+            st.session_state.selected_branch = selected_branch
+
+            st.session_state.selected_career = selected_career
+
+            st.session_state.semester = semester
+
+            st.session_state.time_available = time_available
+
+            st.session_state.average_score = average_score
+
+            st.session_state.lowest_score = lowest_score
+
+            st.session_state.skill_gap_count = skill_gap_count
+
+            st.session_state.recommended_course = (
+                recommended_course
+            )
+
+            st.session_state.stage = "recommendation"
+
+            st.rerun()
+
+        except Exception as e:
+
+            st.error(
+                "❌ Recommendation error."
+            )
+
+            st.code(str(e))
 
 
-        col1, col2, col3 = st.columns(3)
+# ============================================================
+# STAGE 4 - RECOMMENDATION
+# ============================================================
 
+elif st.session_state.stage == "recommendation":
+
+    st.header(
+        "🎯 Step 4: Personalized Learning Recommendation"
+    )
+
+    recommended_course = (
+        st.session_state.recommended_course
+    )
+
+    # --------------------------------------------------------
+    # PROFILE
+    # --------------------------------------------------------
+
+    st.subheader("👤 Student Profile")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+
+        st.metric(
+            "Branch",
+            st.session_state.selected_branch
+        )
+
+    with col2:
+
+        st.metric(
+            "Semester",
+            st.session_state.semester
+        )
+
+    with col3:
+
+        st.metric(
+            "Career Goal",
+            st.session_state.selected_career
+        )
+
+    with col4:
+
+        st.metric(
+            "Weekly Hours",
+            f"{st.session_state.time_available} hrs"
+        )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # QUIZ PROFILE
+    # --------------------------------------------------------
+
+    st.subheader("📝 Skill Assessment")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Quiz Topic",
+            st.session_state.selected_topic
+        )
+
+    with col2:
+
+        st.metric(
+            "Quiz Score",
+            f"{st.session_state.quiz_score}/5"
+        )
+
+    with col3:
+
+        st.metric(
+            "Learning Level",
+            st.session_state.quiz_level
+        )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # PERFORMANCE
+    # --------------------------------------------------------
+
+    st.subheader("📈 Academic Performance")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Average Score",
+            f"{st.session_state.average_score}%"
+        )
+
+    with col2:
+
+        st.metric(
+            "Lowest Score",
+            f"{st.session_state.lowest_score}%"
+        )
+
+    with col3:
+
+        st.metric(
+            "Skill Gaps",
+            st.session_state.skill_gap_count
+        )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # COURSE
+    # --------------------------------------------------------
+
+    st.subheader("📚 Recommended Course")
+
+    st.success(
+        f"### {recommended_course}"
+    )
+
+    # --------------------------------------------------------
+    # COURSE DETAILS
+    # --------------------------------------------------------
+
+    course_info = courses[
+        courses["Course"].astype(str).str.strip()
+        ==
+        str(recommended_course).strip()
+    ]
+
+    if not course_info.empty:
+
+        row = course_info.iloc[0]
+
+        col1, col2 = st.columns(2)
 
         with col1:
 
-            st.metric(
-                "Quiz Score",
-                f"{score}/5"
-            )
+            st.subheader("💻 Practice Plan")
 
+            if "Practice_Plan" in courses.columns:
+
+                st.write(
+                    row["Practice_Plan"]
+                )
+
+            st.subheader("🛠️ Project")
+
+            if "Project" in courses.columns:
+
+                st.write(
+                    row["Project"]
+                )
 
         with col2:
 
-            st.metric(
-                "Learning Level",
-                level
-            )
+            st.subheader("🏆 Certification")
 
+            if "Certification" in courses.columns:
 
-        with col3:
+                st.write(
+                    row["Certification"]
+                )
 
-            st.metric(
-                "Quiz Topic",
-                selected_topic
-            )
+            st.subheader("📊 Difficulty")
 
+            if "Difficulty" in courses.columns:
 
-        st.divider()
+                st.write(
+                    row["Difficulty"]
+                )
 
+    else:
 
-        st.subheader("📚 Recommended Action")
-
-
-        if level == "Beginner":
-
-            st.write(
-                "### Start with Fundamentals"
-            )
-
-            st.markdown(
-                """
-                - 📖 Learn basic concepts
-                - 📝 Practice simple questions
-                - 🎥 Use beginner-friendly learning resources
-                - 💻 Complete small exercises
-                - 🛠️ Build a basic mini-project
-                """
-            )
-
-
-        elif level == "Intermediate":
-
-            st.write(
-                "### Improve Through Practice"
-            )
-
-            st.markdown(
-                """
-                - 📚 Study intermediate concepts
-                - 💻 Solve coding/practical problems
-                - 🛠️ Build a practical project
-                - 📊 Practice assessment questions
-                - 🏆 Start preparing for certification
-                """
-            )
-
-
-        else:
-
-            st.write(
-                "### Move to Advanced Learning"
-            )
-
-            st.markdown(
-                """
-                - 🚀 Learn advanced concepts
-                - 🛠️ Build an industry-level project
-                - 💻 Solve challenging problems
-                - 🏆 Prepare for certification
-                - 💼 Build your portfolio
-                """
-            )
-
-
-        st.divider()
-
-
-        # ----------------------------------------------------
-        # COMBINED RECOMMENDATION
-        # ----------------------------------------------------
-
-        st.subheader("🤖 Personalized Recommendation")
-
-
-        if (
-            "recommended_course"
-            in st.session_state
-            and st.session_state.recommended_course
-        ):
-
-            st.success(
-                f"Based on your ML recommendation, "
-                f"you should study:\n\n"
-                f"**{st.session_state.recommended_course}**"
-            )
-
-
-        st.write(
-            f"Your quiz level for **{selected_topic}** is "
-            f"**{level}**."
+        st.warning(
+            "Course details were not found "
+            "in Courses_Resources."
         )
 
+    st.divider()
 
-        if level == "Beginner":
+    # --------------------------------------------------------
+    # ADAPTIVE LEARNING GUIDANCE
+    # --------------------------------------------------------
 
-            st.write(
-                "👉 Focus on fundamentals before moving to "
-                "advanced learning."
-            )
+    st.subheader(
+        "🧠 Adaptive Learning Guidance"
+    )
 
-        elif level == "Intermediate":
+    level = st.session_state.quiz_level
 
-            st.write(
-                "👉 Combine learning with regular practice "
-                "and project development."
-            )
+    if level == "Beginner":
 
-        else:
+        st.warning(
+            "Beginner Path"
+        )
 
-            st.write(
-                "👉 Focus on advanced projects, "
-                "certifications, and industry skills."
-            )
+        st.markdown(
+            """
+            **Recommended approach:**
+
+            - 📖 Start with fundamentals
+            - 📝 Practice basic concepts
+            - 💻 Solve simple problems
+            - 🛠️ Build a small project
+            - 🎥 Use beginner-friendly resources
+            """
+        )
+
+    elif level == "Intermediate":
+
+        st.info(
+            "Intermediate Path"
+        )
+
+        st.markdown(
+            """
+            **Recommended approach:**
+
+            - 📚 Study intermediate concepts
+            - 💻 Solve practical problems
+            - 🛠️ Build a practical project
+            - 📊 Practice assessment questions
+            - 🏆 Start certification preparation
+            """
+        )
+
+    else:
+
+        st.success(
+            "Advanced Path"
+        )
+
+        st.markdown(
+            """
+            **Recommended approach:**
+
+            - 🚀 Study advanced concepts
+            - 💻 Solve challenging problems
+            - 🛠️ Build an industry-level project
+            - 🏆 Prepare for certification
+            - 💼 Build a strong portfolio
+            """
+        )
+
+    st.divider()
+
+    if st.button(
+        "📊 View Learning Analysis",
+        use_container_width=True
+    ):
+
+        st.session_state.stage = "analysis"
+
+        st.rerun()
+
+
+# ============================================================
+# STAGE 5 - LEARNING ANALYSIS
+# ============================================================
+
+elif st.session_state.stage == "analysis":
+
+    st.header(
+        "📊 Step 5: Learning Analysis"
+    )
+
+    # --------------------------------------------------------
+    # LEARNING PROFILE
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🎯 Your Learning Profile"
+    )
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+
+        st.metric(
+            "Quiz Score",
+            f"{st.session_state.quiz_score}/5"
+        )
+
+    with col2:
+
+        st.metric(
+            "Learning Level",
+            st.session_state.quiz_level
+        )
+
+    with col3:
+
+        st.metric(
+            "Topic",
+            st.session_state.selected_topic
+        )
+
+    with col4:
+
+        st.metric(
+            "Skill Gaps",
+            st.session_state.skill_gap_count
+        )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # LEARNING LEVEL
+    # --------------------------------------------------------
+
+    level = st.session_state.quiz_level
+
+    st.subheader(
+        "📚 Recommended Learning Action"
+    )
+
+    if level == "Beginner":
+
+        st.write(
+            "### 📖 Start with Fundamentals"
+        )
+
+        st.markdown(
+            """
+            - Learn basic concepts
+            - Practice simple questions
+            - Use beginner-friendly resources
+            - Complete small exercises
+            - Build a basic mini-project
+            """
+        )
+
+    elif level == "Intermediate":
+
+        st.write(
+            "### 💻 Improve Through Practice"
+        )
+
+        st.markdown(
+            """
+            - Study intermediate concepts
+            - Solve coding/practical problems
+            - Build a practical project
+            - Practice assessment questions
+            - Prepare for certification
+            """
+        )
+
+    else:
+
+        st.write(
+            "### 🚀 Move to Advanced Learning"
+        )
+
+        st.markdown(
+            """
+            - Learn advanced concepts
+            - Build an industry-level project
+            - Solve challenging problems
+            - Prepare for certification
+            - Build your portfolio
+            """
+        )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # ML RECOMMENDATION
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🤖 ML Personalized Recommendation"
+    )
+
+    if st.session_state.recommended_course:
+
+        st.success(
+            f"Based on your academic profile, "
+            f"the ML model recommends:\n\n"
+            f"### {st.session_state.recommended_course}"
+        )
+
+    st.write(
+        f"Your **{st.session_state.selected_topic}** "
+        f"quiz level is **{level}**."
+    )
+
+    # --------------------------------------------------------
+    # COMBINED PATH
+    # --------------------------------------------------------
+
+    st.divider()
+
+    st.subheader(
+        "🛣️ Your Personalized Learning Path"
+    )
+
+    if level == "Beginner":
+
+        st.write(
+            "1️⃣ Fundamentals → "
+            "2️⃣ Basic Practice → "
+            "3️⃣ Mini Project → "
+            "4️⃣ Recommended Course → "
+            "5️⃣ Certification"
+        )
+
+    elif level == "Intermediate":
+
+        st.write(
+            "1️⃣ Concept Improvement → "
+            "2️⃣ Practical Problems → "
+            "3️⃣ Project → "
+            "4️⃣ Recommended Course → "
+            "5️⃣ Certification"
+        )
+
+    else:
+
+        st.write(
+            "1️⃣ Advanced Concepts → "
+            "2️⃣ Challenging Problems → "
+            "3️⃣ Industry Project → "
+            "4️⃣ Recommended Course → "
+            "5️⃣ Certification → "
+            "6️⃣ Portfolio"
+        )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # RESTART
+    # --------------------------------------------------------
+
+    if st.button(
+        "🔄 Start Again",
+        use_container_width=True
+    ):
+
+        reset_application()
+
+        st.rerun()
 
 
 # ============================================================
